@@ -15,7 +15,7 @@ Eksik banka varsa uygulama açık hata verir, robotik sesle devam etmez.
 
 En güvenilir doğal sonuç, aynı konuşmacının aynı mikrofon ve ortamda okuduğu
 insan kayıtlarıdır. Alternatif olarak, dinleyip beğendiğiniz bir **yerel Türkçe
-sinirsel Piper modeli** ile tek seferde banka hazırlayabilirsiniz. Her Piper
+sinirsel Piper modeli** veya **OpenAI Coral kadın sesi** ile tek seferde banka hazırlayabilirsiniz. Her Piper
 modeli stüdyo kalitesinde değildir; kod ses kalitesini garanti edemez.
 Kelime tabanlı birleştirme, insan kayıtlarında bile cümle tonlamasında kesikler
 oluşturabilir. Kesintisiz cümle doğallığı vazgeçilmezse, 68 parçalık kısıtın
@@ -84,6 +84,52 @@ Yer tutucuları gerçek doğrulanmış hash'lerle değiştirin. Betik 67 metni a
 modelle üretir; her parçada modelin yeniden yüklenmesi nedeniyle hazırlık birkaç
 dakika sürebilir. Hazır WAV bankasıyla Piper/ONNX uygulama çalışırken kullanılmaz.
 Çok konuşmacılı model yerine tek konuşmacılı Türkçe bir model seçin.
+
+### C. OpenAI ile tek seferlik Türkçe kadın sesi
+
+`prepare_bank.py --openai` yolu **gpt-4o-mini-tts / coral** kullanır.
+Seslendirme talimatı doğal, sıcak ve profesyonel **kadın anonsu** olarak sabittir;
+tüm parçalar aynı ses ve talimatla üretilir. Erkek sesine veya Windows robotik
+sesine otomatik geçiş yapılmaz. Doğallık ve telaffuz dinlenerek kontrol edilmelidir.
+
+Bu yol sadece hazırlık aşamasında internet ve **ücretli OpenAI API erişimi**
+gerektirir; ChatGPT Plus/Pro aboneliği API kredisi yerine geçmez. API anahtarını
+kaynak koda, sohbet mesajına veya GitHub'a koymayın. Bulut ortamında güvenli
+ortam ayarlarına `TTS_API_KEY` olarak ekleyin ve `api.openai.com` HTTPS erişimini
+açın. Standart yerel kullanımda `OPENAI_API_KEY` de desteklenir. Ek Python
+kütüphanesi gerekmez. Günlük anonslarda anahtar veya internet gerekmez.
+
+Önce bir tam cümle örneği üretip Windows'ta dinleyin:
+
+```powershell
+.\.venv\Scripts\python.exe prepare_bank.py --openai --preview
+Start-Process .\ses_bankasi\kadin_ses_ornegi.wav
+```
+
+Beğendiğinizde 67 konuşma parçası ve zili üretin:
+
+```powershell
+.\.venv\Scripts\python.exe prepare_bank.py --openai
+.\.venv\Scripts\python.exe main.py
+```
+
+Örnek tam bir cümledir; parçaların birleştirildiği anonsu ayrıca kontrol edin.
+Üretim başarısız olursa geçerli tam banka yayımlanmaz. Başarılı API yanıtları
+`.tts-cache` içinde metin/model/ses/talimat kimliğiyle saklanır; aynı komutu tekrar
+çalıştırmak tamamlanan parçalar için yeni API isteği yapmaz. Bu klasörü silerseniz
+yeniden üretim ücretli olabilir. Belirsiz bağlantı hatalarında otomatik istek
+tekrarı yapılmaz. `--overwrite` mevcut çıktıyı yeniler; aynı içerik için önbelleği
+yine kullanır. Yeni bir ses kaydı istemek için ilgili önbelleği bilinçli silmek gerekir.
+
+`uretim_bilgisi.json` sağlayıcı, model, ses ve yapay zekâ üretim bilgisini içerir;
+anahtar içermez. Bu dosya, `manifest.json` ve 68 banka WAV'ı tamamlanmış banka
+paketini oluşturur. Örnek ve önbellek uygulamanın çalışması için gerekli değildir.
+Üretilmiş kayıtların yapay zekâ sesi olduğunu kullanıcılara açıkça belirtin.
+
+**Bu depodaki durum:** TTS entegrasyonu ve taklit HTTP testleri hazırdır; gerçek
+OpenAI kadın sesleri henüz üretilmemiştir. Üretim API anahtarı ve ağ erişimi bekler.
+Üretim tamamlandığında WAV'lar ve manifest ayrıca depoya eklenmelidir; kaynak
+kodunu indirmek şu aşamada hazır kadın ses bankası sağlamaz.
 
 ### Başlatma
 

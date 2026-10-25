@@ -1,4 +1,4 @@
-"""İnsan WAV kayıtlarını veya yerel Piper modelini kullanarak 68 parçalık banka üret."""
+"""İnsan kayıtları, yerel Piper veya OpenAI kadın sesiyle 68 parçalık banka üret."""
 import argparse
 from array import array
 import hashlib
@@ -81,11 +81,32 @@ def main():
     group.add_argument('--inventory', action='store_true', help='67 dosya adı ve kayıt metnini JSON olarak yazdır')
     group.add_argument('--input-dir', type=Path, help='Aynı dosya adlarıyla 67 insan kaydı içeren klasör')
     group.add_argument('--model', type=Path, help='Yerel Türkçe Piper .onnx modeli')
+    group.add_argument('--openai', action='store_true', help='Bir kerelik OpenAI Coral kadın sesi üretimi (ücretli API)')
+    parser.add_argument('--preview', action='store_true', help='--openai ile yalnızca bir örnek kadın anonsu üret')
+    parser.add_argument('--cache-dir', type=Path, default=Path(__file__).resolve().parent / '.tts-cache')
     parser.add_argument('--model-sha256')
     parser.add_argument('--config-sha256', help='Modelin yanındaki .onnx.json dosyasının SHA-256 değeri')
     parser.add_argument('--output', type=Path, default=Path(__file__).resolve().parent / 'ses_bankasi')
     parser.add_argument('--overwrite', action='store_true')
     args = parser.parse_args()
+    if args.preview and not args.openai:
+        parser.error('--preview yalnızca --openai ile kullanılabilir.')
+    tts = None
+    if args.openai:
+        from plaka_anons.tts import OpenAISpeech
+        tts = OpenAISpeech(args.cache_dir)
+    if args.preview:
+        target = args.output / 'kadin_ses_ornegi.wav'
+        if target.exists() and not args.overwrite:
+            parser.error('Örnek zaten var; yenilemek için --overwrite kullanın.')
+        with tempfile.TemporaryDirectory(prefix='plaka-preview-') as temp:
+            source = Path(temp) / 'raw.wav'
+            tts.render('Dikkat. Yirmi üç, Adana Bilecik Ceyhan, sıfır yirmi üç plakalı araç sahibinin dikkatine. '
+                       'Lütfen aracınızın yanına geliniz.', source)
+            args.output.mkdir(parents=True, exist_ok=True)
+            normalize(source, target)
+        print(f'Kadın ses örneği hazır: {target}. Bu örnek tam 68 parçalık banka değildir.')
+        return
     inventory = speech_inventory()
     if args.inventory:
         print(json.dumps({f'{key}.wav': text for key, text in inventory.items()}, ensure_ascii=False, indent=2))
@@ -105,6 +126,9 @@ def main():
         for key, text in inventory.items():
             print(f'{key}: {text}', flush=True)
             source = args.input_dir / f'{key}.wav' if args.input_dir else temporary / 'raw.wav'
+            if tts:
+                state = tts.render(text, source)
+                print('  ' + ('Önbellekten alındı.' if state == 'cached' else 'OpenAI kadın sesi üretildi.'), flush=True)
             if args.model:
                 child_env = os.environ.copy()
                 child_env['PYTHONUTF8'] = '1'
@@ -124,8 +148,18 @@ def main():
             staged.write_bytes((temporary / f'{key}.wav').read_bytes())
             staged.replace(target)
         (args.output / 'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
+        provenance = {'provider': 'openai' if args.openai else ('piper' if args.model else 'recordings'),
+                      'ai_generated': bool(args.openai or args.model)}
+        if args.openai:
+            from plaka_anons.tts import MODEL, VOICE, INSTRUCTIONS
+            provenance.update(model=MODEL, voice=VOICE, voice_style='Türkçe kadın anonsu', instructions=INSTRUCTIONS)
+        (args.output / 'uretim_bilgisi.json').write_text(json.dumps(provenance, ensure_ascii=False, indent=2), encoding='utf-8')
     print('68 WAV hazır. Doğallığı dinleyerek onaylayın; model sesi kalite garantisi değildir.')
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except (RuntimeError, ValueError, OSError, subprocess.CalledProcessError) as exc:
+        print(f'Ses bankası hazırlanamadı: {exc}', file=sys.stderr)
+        raise SystemExit(1)
