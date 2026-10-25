@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Plaka Anons</title><style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif}body{margin:0;background:#0b1220;color:#edf3ff;display:grid;min-height:100dvh;place-items:center}main{width:min(88%,420px);padding:32px 0}h1{font-size:28px;margin-bottom:8px}p{color:#a9b8d0;line-height:1.5}label{display:block;margin:24px 0 8px}input,select,button{box-sizing:border-box;width:100%;font:inherit;padding:16px;border-radius:12px;border:1px solid #35445e;background:#172237;color:inherit}button{margin-top:24px;background:#5bd6ad;color:#09271c;font-weight:700;border:0;cursor:pointer}button:disabled{opacity:.5}#message{min-height:3em;white-space:pre-line}small{color:#a9b8d0}
+</style></head><body><main><h1>Plaka Anons</h1><p>İsteğiniz kontrol paneline iletilir. Anons görevli onayından sonra yapılır.</p>
+<form id="form"><input type="hidden" name="csrf" value="{{ csrf }}">
+{% if not authorized %}<label for="password">Paneldeki eşleştirme parolası</label><input id="password" name="password" type="password" required autocomplete="current-password">
+{% else %}<label for="plate">Araç plakası</label><input id="plate" name="plate" placeholder="23 ABC 023" maxlength="32" required autocomplete="off" autocapitalize="characters">
+<label for="reason">Anons sebebi</label><select id="reason" name="reason">{% for key, value in reasons.items() %}<option value="{{key}}">{{value[0]}}</option>{% endfor %}</select>{% endif %}
+<button type="submit">{{ 'İstek gönder' if authorized else 'Eşleştir' }}</button></form><p id="message" role="status" aria-live="polite"></p><small>Yalnızca işletmenin güvenilir yerel Wi-Fi ağında kullanın.</small>
+<script>
+const form=document.getElementById('form'),message=document.getElementById('message');
+form.addEventListener('submit',async e=>{e.preventDefault();const button=form.querySelector('button');button.disabled=true;message.textContent='Gönderiliyor…';try{const r=await fetch({{ ('/api/requests' if authorized else '/api/login')|tojson }},{method:'POST',body:new FormData(form)});const data=await r.json();if(!r.ok)throw Error(data.error||'İstek gönderilemedi.');{% if authorized %}message.textContent=`İstek #${data.id} alındı. Görevli onayı bekleniyor.`;document.getElementById('plate').value='';{% else %}location.reload();{% endif %}}catch(err){message.textContent=err.message;}finally{button.disabled=false;}});
+</script></main></body></html>

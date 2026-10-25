@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+ses_bankasi/*.wav
+ses_bankasi/manifest.json
+istekler.sqlite3*
+*.log
